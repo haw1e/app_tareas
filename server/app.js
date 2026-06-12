@@ -4,7 +4,29 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  'https://app-tareas-drab.vercel.app',
+];
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-admin-key'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(bodyParser.json());
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
@@ -127,3 +149,11 @@ app.post('/update-task', requireAdminKey, async (req, res) => {
 });
 
 module.exports = app;
+
+// Start the server only if this file is run directly (not imported as a module)
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, '0.0.0.0', () => { // '0.0.0.0' makes the server accessible from other devices on the network
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+}

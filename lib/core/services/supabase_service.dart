@@ -1,9 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/models/user_profile.dart';
-import 'package:flutter/foundation.dart';
+import '../api_config.dart';
 import '../../features/tasks/models/task_model.dart';
 import '../../features/tasks/models/folder_model.dart';
 
@@ -11,12 +12,12 @@ class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
   // Admin API endpoint (self-hosted/service) to perform privileged operations.
-  // Provide `adminApiUrl` and `adminApiKey` when constructing SupabaseService in
-  // release builds so the client does not carry the Supabase service-role key.
-  final String? adminApiUrl;
+  // Usa ApiConfig.baseUrl para seleccionar local/prod automáticamente.
+  final String adminApiUrl;
   final String? adminApiKey;
 
-  SupabaseService({this.adminApiUrl, this.adminApiKey});
+  SupabaseService({String? adminApiUrl, this.adminApiKey})
+      : adminApiUrl = adminApiUrl ?? ApiConfig.baseUrl;
 
   // 1. LogIn
   Future<AuthResponse> signIn(String email, String password) async {
@@ -52,7 +53,7 @@ class SupabaseService {
     required String password, 
     required String fullName
   }) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     final res = await _postJson('/create-worker', {
       'email': email,
       'password': password,
@@ -122,27 +123,27 @@ class SupabaseService {
 
   // 6. Eliminar tareas
   Future<void> deleteTask(String taskId) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/delete-task', {'id': taskId});
   }
 
   Future<void> deleteAllTasks() async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/delete-all-tasks', {});
   }
 
   Future<void> deleteFolder(String folderId) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/delete-folder', {'id': folderId});
   }
 
   Future<void> updateFolder(String folderId, String name) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/update-folder', {'id': folderId, 'name': name});
   }
 
   Future<void> deleteUser(String userId) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/delete-user', {'id': userId});
   }
 
@@ -151,7 +152,7 @@ class SupabaseService {
     required String fullName,
     required String role,
   }) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/update-user-profile', {
       'id': userId,
       'full_name': fullName,
@@ -191,7 +192,7 @@ class SupabaseService {
     required String title,
     required String description,
   }) async {
-    if (adminApiUrl == null) throw Exception('Admin API not configured');
+    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
     await _postJson('/update-task', {
       'id': taskId,
       'title': title,
@@ -226,12 +227,15 @@ class SupabaseService {
   }
 
   Uri _adminUri(String path) {
-    final base = adminApiUrl?.trim();
-    if (base == null || base.isEmpty) {
+    final base = adminApiUrl.trim();
+    if (base.isEmpty) {
       throw Exception('Admin API URL is not configured');
     }
-    if (!base.toLowerCase().startsWith('https://')) {
-      throw Exception('Admin API URL must use HTTPS: $base');
+    if (!base.toLowerCase().startsWith('http://') && !base.toLowerCase().startsWith('https://')) {
+      throw Exception('Admin API URL must include http:// or https://: $base');
+    }
+    if (base.toLowerCase().startsWith('http://') && kReleaseMode) {
+      throw Exception('Release admin API URL must use HTTPS: $base');
     }
 
     final normalizedBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
@@ -250,8 +254,8 @@ class SupabaseService {
     }
 
     final resp = await http
-        .post(url, headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 15));
+        .post(url, headers: headers, body: jsonEncode(body)) // Increased timeout to 30 seconds
+        .timeout(const Duration(seconds: 30)); // If backend operations are slow, consider optimizing them instead of just increasing this.
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('Admin API request failed (${resp.statusCode}): ${resp.body}');
     }

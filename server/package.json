@@ -7,9 +7,14 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "@supabase/supabase-js": "^2.22.0",
+    "@supabase/supabase-js": "^2.108.1",
+    "body-parse": "^0.1.0",
     "body-parser": "^1.20.2",
-    "cors": "^2.8.5"
-  }
+    "cors": "^2.8.6",
+    "express": "^4.22.2"
+  },
+  "description": "This small Express server exposes privileged admin operations using the Supabase service role key. It is meant to be deployed to a secure environment (Heroku, Vercel Serverless, DigitalOcean App Platform, etc.) and NOT included in the mobile app.",
+  "keywords": [],
+  "author": "",
+  "type": "commonjs"
 }

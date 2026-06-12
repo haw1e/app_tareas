@@ -11,16 +11,15 @@ class WorkerFeed extends StatelessWidget {
   final String? currentFolderName;
   
   const WorkerFeed({
-    Key? key, 
+    super.key, 
     required this.userProfile,
     this.currentFolderId,
     this.currentFolderName,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final supabaseService = SupabaseService(
-      adminApiUrl: Config.adminApiUrl,
       adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
     );
     final isRoot = currentFolderId == null;
@@ -173,7 +172,6 @@ class WorkerFeed extends StatelessWidget {
 
   void _confirmSignOut(BuildContext context) {
     final supabaseService = SupabaseService(
-      adminApiUrl: Config.adminApiUrl,
       adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
     );
     showDialog(

@@ -23,7 +23,6 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final SupabaseService _supabaseService = SupabaseService(
-    adminApiUrl: Config.adminApiUrl,
     adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
   );
 

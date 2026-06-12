@@ -42,7 +42,6 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final SupabaseService _supabaseService = SupabaseService(
-    adminApiUrl: Config.adminApiUrl,
     adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
   );
   UserProfile? _initialProfile;
@@ -77,7 +76,26 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
               if (profileSnapshot.hasError || !profileSnapshot.hasData) {
-                return const Scaffold(body: Center(child: Text('Error al cargar perfil')));
+                return Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Error al cargar el perfil.\nEs posible que tu usuario no tenga un perfil asignado.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await Supabase.instance.client.auth.signOut();
+                          },
+                          child: const Text('Cerrar sesión y volver'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               }
               return HomeScreen(userProfile: profileSnapshot.data!);
             },
@@ -125,7 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _supabaseService = SupabaseService(
-    adminApiUrl: Config.adminApiUrl,
     adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
   );
   bool _isLoading = false;

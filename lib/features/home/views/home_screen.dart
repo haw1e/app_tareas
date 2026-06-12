@@ -6,7 +6,7 @@ import '../../worker_feed/views/worker_feed.dart';
 class HomeScreen extends StatelessWidget {
   final UserProfile userProfile;
 
-  const HomeScreen({Key? key, required this.userProfile}) : super(key: key);
+  const HomeScreen({super.key, required this.userProfile});
 
   @override
   Widget build(BuildContext context) {
