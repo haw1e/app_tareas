@@ -225,9 +225,23 @@ class SupabaseService {
     });
   }
 
+  Uri _adminUri(String path) {
+    final base = adminApiUrl?.trim();
+    if (base == null || base.isEmpty) {
+      throw Exception('Admin API URL is not configured');
+    }
+    if (!base.toLowerCase().startsWith('https://')) {
+      throw Exception('Admin API URL must use HTTPS: $base');
+    }
+
+    final normalizedBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$normalizedBase$normalizedPath');
+  }
+
   // --- Helper for admin API calls ---
   Future<Map<String, dynamic>?> _postJson(String path, Map body) async {
-    final url = Uri.parse('${adminApiUrl!}${path}');
+    final url = _adminUri(path);
     final headers = {
       'Content-Type': 'application/json',
     };
