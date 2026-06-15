@@ -44,22 +44,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
   final SupabaseService _supabaseService = SupabaseService(
     adminApiKey: Config.adminApiKey.isEmpty ? null : Config.adminApiKey,
   );
-  UserProfile? _initialProfile;
-  bool _checkingSession = true;
 
   @override
   Widget build(BuildContext context) {
-    // Durante la comprobación inicial mostramos un indicador
-    if (_checkingSession) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    // Si ya detectamos un perfil persistente, saltamos directamente
-    if (_initialProfile != null) {
-      return HomeScreen(userProfile: _initialProfile!);
-    }
-
-    // Si no hay sesión persistente, usamos el stream para cambios de auth
     return StreamBuilder<AuthState>(
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
@@ -67,7 +54,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        final session = snapshot.data?.session;
+        // Obtiene la sesión del evento o la actual por defecto
+        final session = snapshot.data?.session ?? Supabase.instance.client.auth.currentSession;
+        
         if (session != null) {
           return FutureBuilder(
             future: _supabaseService.getCurrentProfile(),
@@ -105,30 +94,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         return const LoginScreen();
       },
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _checkPersistedSession();
-  }
-
-  Future<void> _checkPersistedSession() async {
-    try {
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session != null) {
-        final profile = await _supabaseService.getCurrentProfile();
-        if (mounted) {
-          setState(() {
-            _initialProfile = profile;
-          });
-        }
-      }
-    } catch (_) {
-      // Ignorar fallos y dejar que el stream maneje la auth
-    } finally {
-      if (mounted) setState(() => _checkingSession = false);
-    }
   }
 }
 

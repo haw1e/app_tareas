@@ -1,23 +1,15 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/models/user_profile.dart';
-import '../api_config.dart';
 import '../../features/tasks/models/task_model.dart';
 import '../../features/tasks/models/folder_model.dart';
 
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
-  // Admin API endpoint (self-hosted/service) to perform privileged operations.
-  // Usa ApiConfig.baseUrl para seleccionar local/prod automáticamente.
-  final String adminApiUrl;
-  final String? adminApiKey;
-
-  SupabaseService({String? adminApiUrl, this.adminApiKey})
-      : adminApiUrl = adminApiUrl ?? ApiConfig.baseUrl;
+  // Ya no dependemos de un backend Node.js externo.
+  // Mantenemos los parámetros opcionales en el constructor para no romper 
+  // el código donde se instancia la clase en el resto de la app.
+  SupabaseService({String? adminApiUrl, String? adminApiKey});
 
   // 1. LogIn
   Future<AuthResponse> signIn(String email, String password) async {
@@ -53,15 +45,19 @@ class SupabaseService {
     required String password, 
     required String fullName
   }) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    final res = await _postJson('/create-worker', {
-      'email': email,
-      'password': password,
-      'full_name': fullName,
-    });
-
-    if (res == null || res['user'] == null) {
-      throw Exception('Failed to create worker account');
+    // Creamos al usuario en la base de datos de Auth nativa de Supabase
+    final res = await _client.auth.signUp(
+      email: email,
+      password: password,
+    );
+    
+    if (res.user != null) {
+      await _client.from('profiles').upsert({
+        'id': res.user!.id,
+        'email': email,
+        'full_name': fullName,
+        'role': 'worker',
+      });
     }
   }
 
@@ -123,28 +119,26 @@ class SupabaseService {
 
   // 6. Eliminar tareas
   Future<void> deleteTask(String taskId) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/delete-task', {'id': taskId});
+    await _client.from('tasks').delete().eq('id', taskId);
   }
 
   Future<void> deleteAllTasks() async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/delete-all-tasks', {});
+    // Supabase exige una condición para hacer deletes masivos por seguridad.
+    // Usamos una condición que siempre se cumple para borrar todo.
+    await _client.from('tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   }
 
   Future<void> deleteFolder(String folderId) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/delete-folder', {'id': folderId});
+    await _client.from('folders').delete().eq('id', folderId);
   }
 
   Future<void> updateFolder(String folderId, String name) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/update-folder', {'id': folderId, 'name': name});
+    await _client.from('folders').update({'name': name}).eq('id', folderId);
   }
 
   Future<void> deleteUser(String userId) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/delete-user', {'id': userId});
+    // Eliminamos solo el perfil del usuario de la tabla pública
+    await _client.from('profiles').delete().eq('id', userId);
   }
 
   Future<void> updateUserProfile({
@@ -152,12 +146,10 @@ class SupabaseService {
     required String fullName,
     required String role,
   }) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/update-user-profile', {
-      'id': userId,
+    await _client.from('profiles').update({
       'full_name': fullName,
       'role': role,
-    });
+    }).eq('id', userId);
   }
 
   // 7. Crear Tarea
@@ -192,12 +184,10 @@ class SupabaseService {
     required String title,
     required String description,
   }) async {
-    if (adminApiUrl.isEmpty) throw Exception('Admin API not configured');
-    await _postJson('/update-task', {
-      'id': taskId,
+    await _client.from('tasks').update({
       'title': title,
       'description': description,
-    });
+    }).eq('id', taskId);
   }
 
   // 8. Folders
@@ -224,42 +214,5 @@ class SupabaseService {
     return _client.from('profiles').stream(primaryKey: ['id']).map((maps) {
       return maps.map((map) => UserProfile.fromJson(map)).toList();
     });
-  }
-
-  Uri _adminUri(String path) {
-    final base = adminApiUrl.trim();
-    if (base.isEmpty) {
-      throw Exception('Admin API URL is not configured');
-    }
-    if (!base.toLowerCase().startsWith('http://') && !base.toLowerCase().startsWith('https://')) {
-      throw Exception('Admin API URL must include http:// or https://: $base');
-    }
-    if (base.toLowerCase().startsWith('http://') && kReleaseMode) {
-      throw Exception('Release admin API URL must use HTTPS: $base');
-    }
-
-    final normalizedBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$normalizedBase$normalizedPath');
-  }
-
-  // --- Helper for admin API calls ---
-  Future<Map<String, dynamic>?> _postJson(String path, Map body) async {
-    final url = _adminUri(path);
-    final headers = {
-      'Content-Type': 'application/json',
-    };
-    if (adminApiKey != null && adminApiKey!.isNotEmpty) {
-      headers['x-admin-key'] = adminApiKey!;
-    }
-
-    final resp = await http
-        .post(url, headers: headers, body: jsonEncode(body)) // Increased timeout to 30 seconds
-        .timeout(const Duration(seconds: 30)); // If backend operations are slow, consider optimizing them instead of just increasing this.
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw Exception('Admin API request failed (${resp.statusCode}): ${resp.body}');
-    }
-    if (resp.body.isEmpty) return null;
-    return jsonDecode(resp.body) as Map<String, dynamic>;
   }
 }

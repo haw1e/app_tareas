@@ -303,6 +303,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SnackBar(content: Text('Todas las tareas han sido eliminadas.')),
               );
               Navigator.pop(dialogContext);
+              setState(() {}); // Recarga la UI
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
@@ -323,7 +324,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onPressed: () async {
               await _supabaseService.signOut();
               if (!mounted) return;
-              Navigator.pop(dialogContext);
+              Navigator.pop(dialogContext); // Cierra el dialog
+              // Devuelve a la raíz de la app (AuthWrapper/Login)
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text('Salir', style: TextStyle(color: Colors.red)),
           ),
@@ -348,6 +351,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SnackBar(content: Text('Tarea eliminada')),
               );
               Navigator.pop(dialogContext);
+              setState(() {}); // Recarga la UI
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
@@ -389,6 +393,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SnackBar(content: Text('Tarea actualizada')),
                 );
                 Navigator.pop(dialogContext);
+                setState(() {}); // Recarga la UI
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
@@ -419,6 +424,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SnackBar(content: Text('Carpeta eliminada')),
               );
               Navigator.pop(dialogContext);
+              setState(() {}); // Recarga la UI
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
@@ -449,6 +455,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SnackBar(content: Text('Carpeta actualizada')),
                 );
                 Navigator.pop(dialogContext);
+                setState(() {}); // Recarga la UI
               }
             },
             child: const Text('Guardar'),
@@ -474,6 +481,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SnackBar(content: Text('Usuario eliminado')),
               );
               Navigator.pop(dialogContext);
+              setState(() {}); // Recarga la UI
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
@@ -489,7 +497,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (builderContext, setState) => AlertDialog(
+        builder: (builderContext, setDialogState) => AlertDialog(
           title: const Text('Editar Usuario'),
           content: SingleChildScrollView(
             child: Column(
@@ -505,7 +513,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     DropdownMenuItem(value: 'worker', child: Text('Worker')),
                   ],
                   onChanged: (value) {
-                    if (value != null) setState(() => selectedRole = value);
+                    if (value != null) setDialogState(() => selectedRole = value);
                   },
                 ),
               ],
@@ -526,6 +534,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SnackBar(content: Text('Usuario actualizado')),
                   );
                   Navigator.pop(dialogContext);
+                  setState(() {}); // Recarga la UI del padre
                 }
               },
               child: const Text('Guardar'),
@@ -544,7 +553,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (dialogContext, setState) => AlertDialog(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Crear Tarea'),
           content: SingleChildScrollView(
             child: Column(
@@ -566,14 +575,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? null
                   : () async {
                       if (titleController.text.isNotEmpty) {
-                        setState(() => isLoading = true);
+                        setDialogState(() => isLoading = true);
                         try {
                           await _supabaseService.createTask(
                             title: titleController.text.trim(),
                             description: descController.text.trim(),
                             folderId: widget.currentFolderId,
                           );
-                          if (mounted) Navigator.pop(context);
+                          if (mounted) {
+                            Navigator.pop(context);
+                            setState(() {}); // Recarga la UI del padre al instante
+                          }
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -581,7 +593,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             );
                           }
                         } finally {
-                          if (mounted) setState(() => isLoading = false);
+                          if (mounted) setDialogState(() => isLoading = false);
                         }
                       }
                     },
@@ -600,7 +612,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (dialogContext, setState) => AlertDialog(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Nueva Carpeta'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -622,13 +634,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? null
                   : () async {
                       if (nameController.text.isNotEmpty) {
-                        setState(() => isLoading = true);
+                        setDialogState(() => isLoading = true);
                         try {
                           await _supabaseService.createFolder(
                             nameController.text.trim(),
                             parentId: widget.currentFolderId,
                           );
-                          if (mounted) Navigator.pop(context);
+                          if (mounted) {
+                            Navigator.pop(context);
+                            setState(() {}); // Recarga la UI del padre al instante
+                          }
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -636,7 +651,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             );
                           }
                         } finally {
-                          if (mounted) setState(() => isLoading = false);
+                          if (mounted) setDialogState(() => isLoading = false);
                         }
                       }
                     },
@@ -657,7 +672,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (innerContext, setDialogState) {
           return AlertDialog(
             title: const Text('Crear Trabajador'),
             content: SingleChildScrollView(
@@ -672,24 +687,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
             actions: [
-              TextButton(onPressed: isLoading ? null : () => Navigator.pop(context), child: const Text('Cancelar')),
+              TextButton(onPressed: isLoading ? null : () => Navigator.pop(innerContext), child: const Text('Cancelar')),
               ElevatedButton(
                 onPressed: isLoading ? null : () async {
                   if (emailController.text.isNotEmpty && passwordController.text.isNotEmpty) {
-                    setState(() => isLoading = true);
+                    setDialogState(() => isLoading = true);
                     try {
                       await _supabaseService.createWorkerAccount(
                         email: emailController.text.trim(),
                         password: passwordController.text.trim(),
                         fullName: nameController.text.trim(),
                       );
-                      if (mounted) Navigator.pop(context);
+                      if (mounted) {
+                        Navigator.pop(innerContext);
+                        setState(() {}); // Recarga la UI del dashboard
+                      }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        ScaffoldMessenger.of(innerContext).showSnackBar(SnackBar(content: Text('Error: $e')));
                       }
                     } finally {
-                      if (mounted) setState(() => isLoading = false);
+                      if (mounted) setDialogState(() => isLoading = false);
                     }
                   }
                 },
